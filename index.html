@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <meta name="google-site-verification" content="S4yj26laybYjHTBWA5u_2ey7dSgZ4F_5I22864VlCMU" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neuron Budget - Управление финансами</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .google-btn { background: #fff; color: #444; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-bottom: 15px; cursor: pointer; padding: 10px; border-radius: 8px; }
-        .auth-toggle { text-align: center; cursor: pointer; color: var(--primary-color); text-decoration: underline; font-size: 0.9rem; margin-top: 10px; }
+        .google-btn { background: #fff; color: #444; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-bottom: 15px; cursor: pointer; padding: 10px; border-radius: 8px; font-weight: bold; }
+        .auth-toggle { text-align: center; cursor: pointer; color: #6366f1; text-decoration: underline; font-size: 0.9rem; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <div class="logo"><h1>Neuron Budget</h1><span>Финансовый помощник</span></div>
+            <div class="logo">
+                <h1>Neuron Budget</h1>
+                <span>Ваш финансовый помощник</span>
+            </div>
             <nav class="nav">
-                <a href="#" class="nav-link" id="authBtn" onclick="openAuthModal()">Вход</a>
+                <a href="#" class="nav-link" id="authBtn">Вход</a>
                 <a href="#operations" class="nav-link active">Операции</a>
                 <a href="#analytics" class="nav-link">Аналитика</a>
                 <a href="#budgets" class="nav-link">Бюджеты</a>
@@ -47,12 +51,18 @@
             </section>
 
             <section id="budgets" class="section">
-                <div class="section-header"><h2>Управление бюджетами</h2><button class="btn btn-primary" onclick="openModal('addBudgetModal')">+ Добавить</button></div>
+                <div class="section-header">
+                    <h2>Бюджеты</h2>
+                    <button class="btn btn-primary" onclick="openModal('addBudgetModal')">+ Бюджет</button>
+                </div>
                 <div class="budgets-grid" id="budgetsContainer"></div>
             </section>
 
             <section id="goals" class="section">
-                <div class="section-header"><h2>Цели накопления</h2><button class="btn btn-primary" onclick="openModal('addGoalModal')">+ Новая цель</button></div>
+                <div class="section-header">
+                    <h2>Цели</h2>
+                    <button class="btn btn-primary" onclick="openModal('addGoalModal')">+ Цель</button>
+                </div>
                 <div class="goals-grid" id="goalsContainer"></div>
             </section>
         </main>
@@ -61,14 +71,16 @@
     <div id="authModal" class="modal">
         <div class="modal-content">
             <h3 id="authTitle">Вход в систему</h3>
-            <div class="google-btn" id="googleBtn"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Google</div>
+            <div class="google-btn" id="googleBtn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Google
+            </div>
             <form id="authForm">
                 <div class="form-group"><label>Email</label><input type="email" id="authEmail" required></div>
                 <div class="form-group"><label>Пароль</label><input type="password" id="authPass" required></div>
-                <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn">Войти</button>
+                <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn" style="width: 100%">Войти</button>
             </form>
-            <div class="auth-toggle" onclick="toggleAuthMode()" id="toggleText">Регистрация</div>
-            <div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="closeModal('authModal')">Закрыть</button></div>
+            <div class="auth-toggle" id="toggleAuth">Регистрация</div>
+            <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('authModal')">Закрыть</button></div>
         </div>
     </div>
 
@@ -78,10 +90,13 @@
             <form id="transactionForm">
                 <div class="form-group">
                     <label>Тип</label>
-                    <select id="type"><option value="income">Доход</option><option value="expense">Расход</option></select>
+                    <div class="toggle-group">
+                        <button type="button" class="toggle-btn active" data-type="income">Доход</button>
+                        <button type="button" class="toggle-btn" data-type="expense">Расход</button>
+                    </div>
                 </div>
                 <div class="form-group"><label>Сумма</label><input type="number" id="amount" required step="0.01"></div>
-                <div class="form-group"><label>Категория</label><input type="text" id="category" required placeholder="Напр. Продукты"></div>
+                <div class="form-group"><label>Категория</label><select id="category" required></select></div>
                 <div class="form-group"><label>Описание</label><input type="text" id="description"></div>
                 <div class="form-group"><label>Дата</label><input type="date" id="date" required></div>
                 <div class="modal-actions">
@@ -92,8 +107,35 @@
         </div>
     </div>
 
-    <div id="addBudgetModal" class="modal"><div class="modal-content"><h3>Новый бюджет</h3><form id="budgetForm">...</form><button onclick="closeModal('addBudgetModal')">Закрыть</button></div></div>
-    <div id="addGoalModal" class="modal"><div class="modal-content"><h3>Новая цель</h3><form id="goalForm">...</form><button onclick="closeModal('addGoalModal')">Закрыть</button></div></div>
+    <div id="addBudgetModal" class="modal">
+        <div class="modal-content">
+            <h3>Новый бюджет</h3>
+            <form id="budgetForm">
+                <div class="form-group"><label>Категория</label><select id="budgetCategory" required></select></div>
+                <div class="form-group"><label>Лимит на месяц</label><input type="number" id="budgetLimit" required min="0"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addBudgetModal')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addGoalModal" class="modal">
+        <div class="modal-content">
+            <h3>Новая цель</h3>
+            <form id="goalForm">
+                <div class="form-group"><label>Название</label><input type="text" id="goalName" required></div>
+                <div class="form-group"><label>Сумма</label><input type="number" id="goalTarget" required min="0"></div>
+                <div class="form-group"><label>Уже есть</label><input type="number" id="goalCurrent" value="0"></div>
+                <div class="form-group"><label>Срок</label><input type="date" id="goalDeadline" required></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addGoalModal')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
@@ -113,34 +155,40 @@
         const auth = getAuth(app);
         window.db = getFirestore(app);
 
-        window.openAuthModal = () => {
-            if(auth.currentUser) signOut(auth).then(() => location.reload());
-            else document.getElementById('authModal').classList.add('active');
+        const authBtn = document.getElementById('authBtn');
+        authBtn.onclick = (e) => {
+            e.preventDefault();
+            if (auth.currentUser) {
+                signOut(auth).then(() => location.reload());
+            } else {
+                openModal('authModal');
+            }
         };
 
         onAuthStateChanged(auth, (user) => {
             window.currentUser = user;
-            document.getElementById('authBtn').innerText = user ? 'Выход' : 'Вход';
+            authBtn.innerText = user ? 'Выход' : 'Вход';
             if (window.budgetApp) window.budgetApp.loadInitialData();
         });
 
         let isLogin = true;
-        window.toggleAuthMode = () => {
+        document.getElementById('toggleAuth').onclick = () => {
             isLogin = !isLogin;
             document.getElementById('authTitle').innerText = isLogin ? 'Вход' : 'Регистрация';
             document.getElementById('authSubmitBtn').innerText = isLogin ? 'Войти' : 'Создать';
+            document.getElementById('toggleAuth').innerText = isLogin ? 'Регистрация' : 'Вход';
         };
 
         document.getElementById('googleBtn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
         document.getElementById('authForm').onsubmit = async (e) => {
             e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
             try {
-                const email = document.getElementById('authEmail').value;
-                const pass = document.getElementById('authPass').value;
                 if(isLogin) await signInWithEmailAndPassword(auth, email, pass);
                 else await createUserWithEmailAndPassword(auth, email, pass);
                 closeModal('authModal');
-            } catch(e) { alert(e.message); }
+            } catch(e) { alert("Ошибка: " + e.message); }
         };
     </script>
     <script src="script.js"></script>
