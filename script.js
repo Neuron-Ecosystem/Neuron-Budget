@@ -1,69 +1,59 @@
 class BudgetDB {
     constructor() {
-        this.db = null;
-        window.budgetApp = this; // ДЕЛАЕМ ПРИЛОЖЕНИЕ ДОСТУПНЫМ ГЛОБАЛЬНО
+        this.idb = null;
+        window.budgetApp = this; // Для доступа из index.html
         this.init();
     }
 
     async init() {
-        this.db = await this.openDatabase();
-        this.setupNavigation();
+        this.idb = await this.openIndexedDB();
+        this.setupEventListeners();
         this.loadInitialData();
     }
 
-    openDatabase() {
+    openIndexedDB() {
         return new Promise((resolve) => {
             const request = indexedDB.open('NeuronBudget', 1);
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains('transactions')) db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
-                if (!db.objectStoreNames.contains('budgets')) db.createObjectStore('budgets', { keyPath: 'id', autoIncrement: true });
-                if (!db.objectStoreNames.contains('goals')) db.createObjectStore('goals', { keyPath: 'id', autoIncrement: true });
+                ['transactions', 'budgets', 'goals'].forEach(s => {
+                    if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id', autoIncrement: true });
+                });
             };
             request.onsuccess = () => resolve(request.result);
         });
     }
 
-    // МЕТОД ПОЛУЧЕНИЯ ДАННЫХ
     async getAll(storeName) {
         if (window.currentUser) {
-            // Если залогинены — берем из Firebase Firestore
             const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
-            const snapshot = await getDocs(collection(window.db, `users/${window.currentUser.uid}/${storeName}`));
-            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const snap = await getDocs(collection(window.db, `users/${window.currentUser.uid}/${storeName}`));
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         } else {
-            // Иначе — из локальной IndexedDB
-            return new Promise((resolve) => {
-                const tx = this.db.transaction(storeName, 'readonly');
+            return new Promise(res => {
+                const tx = this.idb.transaction(storeName, 'readonly');
                 const req = tx.objectStore(storeName).getAll();
-                req.onsuccess = () => resolve(req.result);
+                req.onsuccess = () => res(req.result);
             });
         }
     }
 
-    // МЕТОД СОХРАНЕНИЯ
     async add(storeName, data) {
         if (window.currentUser) {
             const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
             await addDoc(collection(window.db, `users/${window.currentUser.uid}/${storeName}`), data);
         } else {
-            const tx = this.db.transaction(storeName, 'readwrite');
+            const tx = this.idb.transaction(storeName, 'readwrite');
             tx.objectStore(storeName).add(data);
         }
-        this.loadInitialData(); // Перерисовываем интерфейс
+        this.loadInitialData();
     }
 
     async loadInitialData() {
-        const transactions = await this.getAll('transactions');
-        const budgets = await this.getAll('budgets');
-        const goals = await this.getAll('goals');
-
-        this.renderTransactions(transactions);
-        this.updateStats(transactions);
-        this.renderBudgets(budgets, transactions);
-        this.renderGoals(goals);
-        // Вызов отрисовки графиков, если они есть
-        if (typeof renderCharts === "function") renderCharts(transactions);
+        const trans = await this.getAll('transactions');
+        this.renderTransactions(trans);
+        this.updateStats(trans);
+        // Здесь можно вызвать renderCharts, renderBudgets и т.д.
     }
 
     renderTransactions(data) {
@@ -71,14 +61,8 @@ class BudgetDB {
         if (!container) return;
         container.innerHTML = data.sort((a,b) => new Date(b.date) - new Date(a.date)).map(t => `
             <div class="transaction-card">
-                <div class="transaction-info">
-                    <strong>${t.category}</strong>
-                    <span>${t.description || ''}</span>
-                    <small>${t.date}</small>
-                </div>
-                <div class="transaction-amount ${t.type}">
-                    ${t.type === 'income' ? '+' : '-'}${t.amount} ₽
-                </div>
+                <div class="transaction-info"><strong>${t.category}</strong><br><small>${t.date}</small></div>
+                <div class="transaction-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${t.amount} ₽</div>
             </div>
         `).join('');
     }
@@ -86,31 +70,52 @@ class BudgetDB {
     updateStats(data) {
         const inc = data.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
         const exp = data.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-        document.getElementById('currentBalance').innerText = (inc - exp) + ' ₽';
-        document.getElementById('totalIncome').innerText = inc + ' ₽';
-        document.getElementById('totalExpense').innerText = exp + ' ₽';
+        document.getElementById('currentBalance').innerText = `${inc - exp} ₽`;
+        document.getElementById('totalIncome').innerText = `${inc} ₽`;
+        document.getElementById('totalExpense').innerText = `${exp} ₽`;
     }
 
-    // Навигация
-    setupNavigation() {
+    setupEventListeners() {
+        // Навигация
         document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
+            link.onclick = (e) => {
                 if (link.id === 'authBtn') return;
                 e.preventDefault();
                 document.querySelectorAll('.nav-link, .section').forEach(el => el.classList.remove('active'));
                 link.classList.add('active');
                 document.querySelector(link.getAttribute('href')).classList.add('active');
-            });
+            };
         });
-    }
 
-    // Твои оригинальные функции renderBudgets и renderGoals оставь ниже...
-    renderBudgets(b, t) { /* Код отрисовки */ }
-    renderGoals(g) { /* Код отрисовки */ }
+        // Форма транзакции
+        const transForm = document.getElementById('transactionForm');
+        if (transForm) {
+            transForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const data = {
+                    type: document.getElementById('type').value,
+                    amount: document.getElementById('amount').value,
+                    category: document.getElementById('category').value,
+                    description: document.getElementById('description').value,
+                    date: document.getElementById('date').value
+                };
+                await this.add('transactions', data);
+                window.closeModal('transactionModal');
+                transForm.reset();
+            };
+        }
+    }
 }
 
-// Глобальные хелперы
-window.openModal = (id) => document.getElementById(id).classList.add('active');
-window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+// Глобальные функции
+window.openModal = (id) => {
+    const m = document.getElementById(id);
+    if(m) m.classList.add('active');
+    else console.error('Модалка не найдена: ' + id);
+};
+window.closeModal = (id) => {
+    const m = document.getElementById(id);
+    if(m) m.classList.remove('active');
+};
 
 const budgetApp = new BudgetDB();
