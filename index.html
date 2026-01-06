@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <meta name="google-site-verification" content="S4yj26laybYjHTBWA5u_2ey7dSgZ4F_5I22864VlCMU" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neuron Budget - Управление финансами</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .user-info-display { display: none; color: var(--secondary-color); font-size: 0.85rem; margin-right: 15px; align-items: center; }
+        .auth-modal-toggle { color: var(--primary-color); cursor: pointer; text-decoration: underline; text-align: center; margin-top: 10px; display: block; }
+        .google-login-btn { background: white; color: #444; border: 1px solid #ddd; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -15,8 +21,8 @@
                 <span>Ваш финансовый помощник</span>
             </div>
             <nav class="nav">
-                <a href="#" class="nav-link" id="authBtn" onclick="showAuthModal()">Вход</a>
-                <div id="userInfo" class="user-profile" style="display:none; color: var(--secondary-color); font-size: 0.8rem; margin-right: 10px;"></div>
+                <div id="userDisplay" class="user-info-display"></div>
+                <a href="#" class="nav-link" id="authBtn" onclick="openAuthModal()">Вход</a>
                 
                 <a href="#operations" class="nav-link active">Операции</a>
                 <a href="#analytics" class="nav-link">Аналитика</a>
@@ -26,37 +32,108 @@
         </header>
 
         <div class="quick-stats">
-            <div class="stat-card"><span class="stat-label">Баланс</span><span class="stat-value" id="currentBalance">0 ₽</span></div>
-            <div class="stat-card"><span class="stat-label">Доходы</span><span class="stat-value income" id="totalIncome">0 ₽</span></div>
-            <div class="stat-card"><span class="stat-label">Расходы</span><span class="stat-value expense" id="totalExpense">0 ₽</span></div>
+            <div class="stat-card">
+                <span class="stat-label">Баланс</span>
+                <span class="stat-value" id="currentBalance">0 ₽</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Доходы</span>
+                <span class="stat-value income" id="totalIncome">0 ₽</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Расходы</span>
+                <span class="stat-value expense" id="totalExpense">0 ₽</span>
+            </div>
         </div>
 
         <main class="main-content">
             <section id="operations" class="section active">
                 <div class="section-header">
                     <h2>Учет операций</h2>
-                    <button class="btn btn-primary" onclick="openAddTransactionModal()">+ Добавить запись</button>
+                    <button class="btn btn-primary" onclick="showAddTransactionModal()">+ Добавить запись</button>
                 </div>
-                <div id="transactionsContainer" class="transactions-container"></div>
+                
+                <div class="transactions-list">
+                    <h3>История операций</h3>
+                    <div class="filters">
+                        <select id="filterType" onchange="window.budgetApp.loadInitialData()">
+                            <option value="all">Все операции</option>
+                            <option value="income">Только доходы</option>
+                            <option value="expense">Только расходы</option>
+                        </select>
+                        <select id="filterCategory" onchange="window.budgetApp.loadInitialData()">
+                            <option value="all">Все категории</option>
+                        </select>
+                        <input type="month" id="filterMonth" onchange="window.budgetApp.loadInitialData()">
+                    </div>
+                    <div id="transactionsContainer" class="transactions-container"></div>
+                </div>
             </section>
-            </main>
+
+            <section id="analytics" class="section">
+                <div class="section-header"><h2>Аналитика</h2></div>
+                <div class="analytics-grid">
+                    <div class="chart-container"><h3>Расходы по категориям</h3><canvas id="categoryChart"></canvas></div>
+                    <div class="chart-container"><h3>Динамика</h3><canvas id="trendChart"></canvas></div>
+                </div>
+            </section>
+
+            <section id="budgets" class="section">
+                <div class="section-header">
+                    <h2>Бюджеты</h2>
+                    <button class="btn btn-primary" onclick="openModal('addBudgetModal')">+ Бюджет</button>
+                </div>
+                <div class="budgets-grid" id="budgetsContainer"></div>
+            </section>
+
+            <section id="goals" class="section">
+                <div class="section-header">
+                    <h2>Цели</h2>
+                    <button class="btn btn-primary" onclick="openModal('addGoalModal')">+ Цель</button>
+                </div>
+                <div class="goals-grid" id="goalsContainer"></div>
+            </section>
+        </main>
     </div>
 
     <div id="authModal" class="modal">
         <div class="modal-content">
             <h3 id="authTitle">Вход в систему</h3>
-            <button class="btn btn-full google-btn" id="googleLoginBtn" style="background:#fff; color:#444; margin-bottom:15px; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:10px; width:100%;">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Войти через Google
+            <button class="btn google-login-btn" id="googleBtn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Google
             </button>
             <form id="authForm">
                 <div class="form-group"><label>Email</label><input type="email" id="authEmail" required></div>
-                <div class="form-group"><label>Пароль</label><input type="password" id="authPassword" required></div>
-                <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn" style="width:100%;">Войти</button>
+                <div class="form-group"><label>Пароль</label><input type="password" id="authPass" required></div>
+                <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn">Войти</button>
             </form>
-            <div id="authToggle" onclick="toggleAuthMode()" style="text-align:center; margin-top:15px; cursor:pointer; text-decoration:underline; font-size:0.9rem;">Нет аккаунта? Регистрация</div>
+            <span class="auth-modal-toggle" onclick="toggleAuthMode()" id="authToggleText">Нет аккаунта? Регистрация</span>
             <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('authModal')">Закрыть</button></div>
         </div>
     </div>
+
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Добавить операцию</h3>
+            <div class="form-group">
+                <label>Тип</label>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" onclick="setTransactionType('income', this)">Доход</button>
+                    <button class="toggle-btn" onclick="setTransactionType('expense', this)">Расход</button>
+                </div>
+            </div>
+            <div class="form-group"><label>Сумма</label><input type="number" id="amount" step="0.01"></div>
+            <div class="form-group"><label>Категория</label><select id="category"></select></div>
+            <div class="form-group"><label>Описание</label><input type="text" id="description"></div>
+            <div class="form-group"><label>Дата</label><input type="date" id="date"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('transactionModal')">Отмена</button>
+                <button class="btn btn-primary" onclick="saveTransaction()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addBudgetModal" class="modal">...</div> <div id="addGoalModal" class="modal">...</div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
@@ -74,46 +151,43 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        window.db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        window.firebaseDB = db; // Делаем доступным для script.js
-        let isLoginMode = true;
-
-        window.showAuthModal = () => {
-            if (auth.currentUser) {
-                signOut(auth).then(() => { window.currentUser = null; location.reload(); });
-            } else {
-                document.getElementById('authModal').classList.add('active');
-            }
+        window.openAuthModal = () => {
+            if(auth.currentUser) { signOut(auth).then(() => location.reload()); }
+            else { document.getElementById('authModal').classList.add('active'); }
         };
 
+        let isLogin = true;
         window.toggleAuthMode = () => {
-            isLoginMode = !isLoginMode;
-            document.getElementById('authTitle').innerText = isLoginMode ? 'Вход' : 'Регистрация';
-            document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Войти' : 'Создать';
+            isLogin = !isLogin;
+            document.getElementById('authTitle').innerText = isLogin ? 'Вход' : 'Регистрация';
+            document.getElementById('authSubmitBtn').innerText = isLogin ? 'Войти' : 'Создать';
         };
 
-        document.getElementById('googleLoginBtn').onclick = () => signInWithPopup(auth, provider).then(() => location.reload());
-        
+        document.getElementById('googleBtn').onclick = () => signInWithPopup(auth, provider);
         document.getElementById('authForm').onsubmit = async (e) => {
             e.preventDefault();
-            const e_mail = document.getElementById('authEmail').value;
-            const pass = document.getElementById('authPassword').value;
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
             try {
-                if (isLoginMode) await signInWithEmailAndPassword(auth, e_mail, pass);
-                else await createUserWithEmailAndPassword(auth, e_mail, pass);
-                location.reload();
-            } catch (err) { alert(err.message); }
+                if(isLogin) await signInWithEmailAndPassword(auth, email, pass);
+                else await createUserWithEmailAndPassword(auth, email, pass);
+                closeModal('authModal');
+            } catch(e) { alert(e.message); }
         };
 
         onAuthStateChanged(auth, (user) => {
             window.currentUser = user;
-            if (user) {
-                document.getElementById('authBtn').innerText = 'Выход';
-                document.getElementById('userInfo').style.display = 'block';
-                document.getElementById('userInfo').innerText = user.email;
+            const btn = document.getElementById('authBtn');
+            const display = document.getElementById('userDisplay');
+            if(user) {
+                btn.innerText = 'Выход';
+                display.style.display = 'flex';
+                display.innerText = user.email;
             }
+            if(window.budgetApp) window.budgetApp.loadInitialData();
         });
     </script>
     <script src="script.js"></script>
