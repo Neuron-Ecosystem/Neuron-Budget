@@ -479,3 +479,66 @@ input:focus, select:focus {
         flex-direction: column;
     }
 }
+
+/* Стили для системы авторизации */
+.auth-toggle {
+    text-align: center;
+    margin-top: 15px;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.auth-toggle:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.google-btn {
+    background: #ffffff !important;
+    color: #444 !important;
+    border: 1px solid #ddd !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.google-btn:hover {
+    background: #f8f9fa !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.user-profile {
+    display: none;
+    align-items: center;
+    background: var(--surface-light);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+    border: 1px solid var(--border);
+}
+
+.nav-link#authBtn {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Адаптив для навигации с новой кнопкой */
+@media (max-width: 768px) {
+    .nav {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    .user-profile {
+        order: -1;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+}
