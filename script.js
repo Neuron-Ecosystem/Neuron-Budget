@@ -1,3 +1,37 @@
+// Добавьте это в начало или конец вашего script.js
+
+// Универсальная функция закрытия модальных окон
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
+};
+
+// Исправленная логика переключения вкладок (чтобы кнопка Вход не ломала навигацию)
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        // Если это кнопка авторизации, не переключаем секции контента
+        if (this.id === 'authBtn') return;
+
+        e.preventDefault();
+        
+        // Убираем active у всех ссылок и секций
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        
+        // Добавляем active текущей
+        this.classList.add('active');
+        const targetId = this.getAttribute('href').substring(1);
+        const targetSection = document.getElementById(targetId);
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
+    });
+});
+
+// Инициализация существующих функций вашего приложения
+// (Ваш оригинальный код BudgetDB, графиков и т.д. должен идти ниже)
 // Database and State Management
 class BudgetDB {
     constructor() {
