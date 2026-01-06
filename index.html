@@ -7,16 +7,44 @@
     <title>Neuron Budget - Управление финансами</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Дополнительные стили для Firebase модалки */
+        .auth-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .google-btn {
+            background: #fff;
+            color: #757575;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .user-profile {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <header class="header">
             <div class="logo">
                 <h1>Neuron Budget</h1>
                 <span>Ваш финансовый помощник</span>
             </div>
             <nav class="nav">
+                <a href="#" class="nav-link" id="authBtn" onclick="showAuthModal()">Вход</a>
+                <div id="userInfo" class="user-profile"></div>
+                
                 <a href="#operations" class="nav-link active">Операции</a>
                 <a href="#analytics" class="nav-link">Аналитика</a>
                 <a href="#budgets" class="nav-link">Бюджеты</a>
@@ -24,7 +52,6 @@
             </nav>
         </header>
 
-        <!-- Quick Stats -->
         <div class="quick-stats">
             <div class="stat-card">
                 <span class="stat-label">Баланс</span>
@@ -40,16 +67,13 @@
             </div>
         </div>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Operations Section -->
             <section id="operations" class="section active">
                 <div class="section-header">
                     <h2>Учет операций</h2>
-                    <button class="btn btn-primary" onclick="showAddTransactionModal()">+ Добавить операцию</button>
+                    <button class="btn btn-primary" onclick="addTransaction()">+ Добавить запись</button>
                 </div>
                 
-                <!-- Transaction Form -->
                 <div class="transaction-form">
                     <div class="form-group">
                         <label>Тип операции</label>
@@ -86,7 +110,6 @@
                     <button class="btn btn-primary btn-full" onclick="addTransaction()">Добавить запись</button>
                 </div>
 
-                <!-- Transactions List -->
                 <div class="transactions-list">
                     <h3>История операций</h3>
                     <div class="filters">
@@ -104,7 +127,6 @@
                 </div>
             </section>
 
-            <!-- Analytics Section -->
             <section id="analytics" class="section">
                 <div class="section-header">
                     <h2>Аналитика и отчеты</h2>
@@ -135,7 +157,6 @@
                 </div>
             </section>
 
-            <!-- Budgets Section -->
             <section id="budgets" class="section">
                 <div class="section-header">
                     <h2>Управление бюджетами</h2>
@@ -145,7 +166,6 @@
                 <div class="budgets-grid" id="budgetsContainer"></div>
             </section>
 
-            <!-- Goals Section -->
             <section id="goals" class="section">
                 <div class="section-header">
                     <h2>Цели накопления</h2>
@@ -157,16 +177,44 @@
         </main>
     </div>
 
-    <!-- Modals -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <h3 id="authTitle">Вход в систему</h3>
+            
+            <button class="btn btn-full google-btn" id="googleLoginBtn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="Google">
+                Войти через Google
+            </button>
+
+            <div style="text-align: center; margin: 15px 0; color: var(--text-secondary);">или</div>
+
+            <form id="authForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="authEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="authPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="authSubmitBtn">Войти</button>
+            </form>
+            
+            <div class="auth-toggle" id="authToggle" onclick="toggleAuthMode()">Нет аккаунта? Зарегистрироваться</div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('authModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <div id="addBudgetModal" class="modal">
         <div class="modal-content">
             <h3>Новый бюджет</h3>
             <form id="budgetForm">
                 <div class="form-group">
                     <label>Категория</label>
-                    <select id="budgetCategory" required>
-                        <option value="">Выберите категорию</option>
-                    </select>
+                    <select id="budgetCategory" required></select>
                 </div>
                 <div class="form-group">
                     <label>Лимит бюджета</label>
@@ -214,6 +262,100 @@
             </form>
         </div>
     </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithPopup, 
+            GoogleAuthProvider, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            onAuthStateChanged,
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOaDVzzPjyYm4HWMND2XYWjLy_h4wty5s",
+            authDomain: "neuron-ecosystem-2025.firebaseapp.com",
+            projectId: "neuron-ecosystem-2025",
+            storageBucket: "neuron-ecosystem-2025.firebasestorage.app",
+            messagingSenderId: "589834476565",
+            appId: "1:589834476565:web:26a110d25bb34e0add421c",
+            measurementId: "G-D832FXG8ET"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        let isLoginMode = true;
+
+        // Глобальные функции для работы с UI
+        window.showAuthModal = () => {
+            if (auth.currentUser) {
+                signOut(auth).then(() => {
+                    showNotification('Вы вышли из системы');
+                });
+            } else {
+                document.getElementById('authModal').classList.add('active');
+            }
+        };
+
+        window.toggleAuthMode = () => {
+            isLoginMode = !isLoginMode;
+            document.getElementById('authTitle').innerText = isLoginMode ? 'Вход в систему' : 'Регистрация';
+            document.getElementById('authSubmitBtn').innerText = isLoginMode ? 'Войти' : 'Создать аккаунт';
+            document.getElementById('authToggle').innerText = isLoginMode ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+        };
+
+        // Вход через Google
+        document.getElementById('googleLoginBtn').addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, provider);
+                closeModal('authModal');
+                showNotification('Успешный вход через Google!');
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        // Вход/Регистрация через Email
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+
+            try {
+                if (isLoginMode) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    showNotification('С возвращением!');
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    showNotification('Аккаунт создан!');
+                }
+                closeModal('authModal');
+                document.getElementById('authForm').reset();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        // Слушатель состояния авторизации
+        onAuthStateChanged(auth, (user) => {
+            const authBtn = document.getElementById('authBtn');
+            const userInfo = document.getElementById('userInfo');
+            
+            if (user) {
+                authBtn.innerText = 'Выход';
+                userInfo.style.display = 'flex';
+                userInfo.innerText = user.displayName || user.email;
+            } else {
+                authBtn.innerText = 'Вход';
+                userInfo.style.display = 'none';
+            }
+        });
+    </script>
 
     <script src="script.js"></script>
 </body>
