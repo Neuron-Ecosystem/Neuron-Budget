@@ -46,15 +46,16 @@ class BudgetDB {
         }
     }
 
+    // Метод добавления данных (Firebase + Local)
     async add(storeName, data) {
         if (window.currentUser) {
             const { collection, addDoc, doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
             const uid = window.currentUser.uid;
 
-            // 1. Сохраняем транзакцию в историю пользователя (для графиков и списка)
+            // 1. Сохраняем транзакцию в историю пользователя
             await addDoc(collection(window.db, `users/${uid}/${storeName}`), data);
 
-            // 2. Если это транзакция — обновляем ОБЩИЙ баланс в коллекции /budget/UID для ИИ
+            // 2. Обновляем главный баланс в /budget/UID для синхронизации с ИИ
             if (storeName === 'transactions') {
                 const budgetRef = doc(window.db, "budget", uid);
                 const budgetSnap = await getDoc(budgetRef);
@@ -68,7 +69,6 @@ class BudgetDB {
                     ? currentBalance + data.amount 
                     : currentBalance - data.amount;
 
-                // Обновляем тот самый баланс, который запрашивает нейросеть
                 await setDoc(budgetRef, { balance: newBalance }, { merge: true });
             }
         } else {
@@ -89,7 +89,7 @@ class BudgetDB {
     }
 
     setupEventListeners() {
-        // Навигация между секциями
+        // Навигация
         document.querySelectorAll('.nav-link').forEach(link => {
             link.onclick = (e) => {
                 if (!link.hash) return;
@@ -100,7 +100,7 @@ class BudgetDB {
             };
         });
 
-        // Переключатель типа транзакции (Доход/Расход)
+        // Переключатель Доход/Расход
         document.querySelectorAll('.toggle-btn').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
@@ -110,44 +110,53 @@ class BudgetDB {
             };
         });
 
-        // Форма добавления транзакции
-        document.getElementById('transactionForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const data = {
-                amount: Number(document.getElementById('amount').value),
-                category: document.getElementById('category').value,
-                description: document.getElementById('description').value,
-                date: document.getElementById('date').value || new Date().toISOString().split('T')[0],
-                type: this.currentType
+        // Форма транзакций
+        const transForm = document.getElementById('transactionForm');
+        if (transForm) {
+            transForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const data = {
+                    amount: Number(document.getElementById('amount').value),
+                    category: document.getElementById('category').value,
+                    description: document.getElementById('description').value,
+                    date: document.getElementById('date').value || new Date().toISOString().split('T')[0],
+                    type: this.currentType
+                };
+                await this.add('transactions', data);
+                window.closeModal('transactionModal');
+                e.target.reset();
             };
-            await this.add('transactions', data);
-            window.closeModal('transactionModal');
-            e.target.reset();
-        };
+        }
 
         // Форма бюджета
-        document.getElementById('budgetForm').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.add('budgets', {
-                category: document.getElementById('budgetCategory').value,
-                limit: Number(document.getElementById('budgetLimit').value)
-            });
-            window.closeModal('addBudgetModal');
-            e.target.reset();
-        };
+        const budForm = document.getElementById('budgetForm');
+        if (budForm) {
+            budForm.onsubmit = async (e) => {
+                e.preventDefault();
+                await this.add('budgets', {
+                    category: document.getElementById('budgetCategory').value,
+                    limit: Number(document.getElementById('budgetLimit').value)
+                });
+                window.closeModal('addBudgetModal');
+                e.target.reset();
+            };
+        }
 
         // Форма целей
-        document.getElementById('goalForm').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.add('goals', {
-                name: document.getElementById('goalName').value,
-                target: Number(document.getElementById('goalTarget').value),
-                current: Number(document.getElementById('goalCurrent').value),
-                deadline: document.getElementById('goalDeadline').value
-            });
-            window.closeModal('addGoalModal');
-            e.target.reset();
-        };
+        const goalForm = document.getElementById('goalForm');
+        if (goalForm) {
+            goalForm.onsubmit = async (e) => {
+                e.preventDefault();
+                await this.add('goals', {
+                    name: document.getElementById('goalName').value,
+                    target: Number(document.getElementById('goalTarget').value),
+                    current: Number(document.getElementById('goalCurrent').value),
+                    deadline: document.getElementById('goalDeadline').value
+                });
+                window.closeModal('addGoalModal');
+                e.target.reset();
+            };
+        }
     }
 
     updateCategorySelects() {
@@ -174,7 +183,6 @@ class BudgetDB {
         const uid = window.currentUser?.uid;
         let displayBalance = 0;
 
-        // Если вошли — берем эталонный баланс из Firebase (тот, что видит ИИ)
         if (uid) {
             const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
             const budgetSnap = await getDoc(doc(window.db, "budget", uid));
@@ -182,7 +190,6 @@ class BudgetDB {
                 displayBalance = budgetSnap.data().balance || 0;
             }
         } else {
-            // Если гость — считаем локально
             const inc = data.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
             const exp = data.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
             displayBalance = inc - exp;
@@ -228,9 +235,15 @@ class BudgetDB {
     }
 }
 
-// Глобальные функции управления модальными окнами
-window.openModal = (id) => document.getElementById(id).classList.add('active');
-window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+// Глобальные функции для управления модальными окнами (чтобы HTML их видел)
+window.openModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('active');
+};
+window.closeModal = (id) => {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('active');
+};
 
 // Запуск приложения
 new BudgetDB();
