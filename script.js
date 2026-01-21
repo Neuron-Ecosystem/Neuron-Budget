@@ -46,16 +46,16 @@ class BudgetDB {
         }
     }
 
-    // Метод добавления данных (Firebase + Local)
+    // ИСПРАВЛЕНО: метод add без лишнего слова 'function'
     async add(storeName, data) {
         if (window.currentUser) {
             const { collection, addDoc, doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
             const uid = window.currentUser.uid;
 
-            // 1. Сохраняем транзакцию в историю пользователя
+            // 1. Сохраняем в историю
             await addDoc(collection(window.db, `users/${uid}/${storeName}`), data);
 
-            // 2. Обновляем главный баланс в /budget/UID для синхронизации с ИИ
+            // 2. Обновляем главный баланс для ИИ
             if (storeName === 'transactions') {
                 const budgetRef = doc(window.db, "budget", uid);
                 const budgetSnap = await getDoc(budgetRef);
@@ -96,11 +96,12 @@ class BudgetDB {
                 e.preventDefault();
                 document.querySelectorAll('.nav-link, .section').forEach(el => el.classList.remove('active'));
                 link.classList.add('active');
-                document.querySelector(link.hash).classList.add('active');
+                const target = document.querySelector(link.hash);
+                if (target) target.classList.add('active');
             };
         });
 
-        // Переключатель Доход/Расход
+        // Тип дохода/расхода
         document.querySelectorAll('.toggle-btn').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
@@ -110,10 +111,10 @@ class BudgetDB {
             };
         });
 
-        // Форма транзакций
-        const transForm = document.getElementById('transactionForm');
-        if (transForm) {
-            transForm.onsubmit = async (e) => {
+        // Формы
+        const tForm = document.getElementById('transactionForm');
+        if (tForm) {
+            tForm.onsubmit = async (e) => {
                 e.preventDefault();
                 const data = {
                     amount: Number(document.getElementById('amount').value),
@@ -128,10 +129,9 @@ class BudgetDB {
             };
         }
 
-        // Форма бюджета
-        const budForm = document.getElementById('budgetForm');
-        if (budForm) {
-            budForm.onsubmit = async (e) => {
+        const bForm = document.getElementById('budgetForm');
+        if (bForm) {
+            bForm.onsubmit = async (e) => {
                 e.preventDefault();
                 await this.add('budgets', {
                     category: document.getElementById('budgetCategory').value,
@@ -142,10 +142,9 @@ class BudgetDB {
             };
         }
 
-        // Форма целей
-        const goalForm = document.getElementById('goalForm');
-        if (goalForm) {
-            goalForm.onsubmit = async (e) => {
+        const gForm = document.getElementById('goalForm');
+        if (gForm) {
+            gForm.onsubmit = async (e) => {
                 e.preventDefault();
                 await this.add('goals', {
                     name: document.getElementById('goalName').value,
@@ -235,15 +234,15 @@ class BudgetDB {
     }
 }
 
-// Глобальные функции для управления модальными окнами (чтобы HTML их видел)
+// ГЛОБАЛЬНЫЕ ФУНКЦИИ МОДАЛОК
 window.openModal = (id) => {
-    const modal = document.getElementById(id);
-    if (modal) modal.classList.add('active');
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
 };
 window.closeModal = (id) => {
-    const modal = document.getElementById(id);
-    if (modal) modal.classList.remove('active');
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
 };
 
-// Запуск приложения
+// ЗАПУСК
 new BudgetDB();
