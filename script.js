@@ -44,16 +44,37 @@ class BudgetDB {
         }
     }
 
-    async add(storeName, data) {
-        if (window.currentUser) {
-            const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
-            await addDoc(collection(window.db, `users/${window.currentUser.uid}/${storeName}`), data);
-        } else {
-            const tx = this.idb.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).add(data);
+async function add(storeName, data) {
+    if (window.currentUser) {
+        const { doc, setDoc, collection, addDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
+        const uid = window.currentUser.uid;
+
+        // 1. Сохраняем транзакцию в историю пользователя
+        await addDoc(collection(window.db, `users/${uid}/${storeName}`), data);
+
+        // 2. Если это транзакция, обновляем общий баланс в коллекции /budget/UID
+        if (storeName === 'transactions') {
+            const budgetRef = doc(window.db, "budget", uid);
+            const budgetSnap = await getDoc(budgetRef);
+            
+            let currentBalance = 0;
+            if (budgetSnap.exists()) {
+                currentBalance = budgetSnap.data().balance || 0;
+            }
+
+            const newBalance = data.type === 'income' 
+                ? currentBalance + data.amount 
+                : currentBalance - data.amount;
+
+            // Обновляем поле balance в твоей новой коллекции
+            await setDoc(budgetRef, { balance: newBalance }, { merge: true });
         }
-        await this.loadInitialData();
+    } else {
+        const tx = this.idb.transaction(storeName, 'readwrite');
+        tx.objectStore(storeName).add(data);
     }
+    await this.loadInitialData();
+}
 
     async loadInitialData() {
         const t = await this.getAll('transactions');
@@ -144,14 +165,31 @@ class BudgetDB {
         `).join('');
     }
 
-    updateStats(data) {
+  async updateStats(data) {
+    const uid = window.currentUser?.uid;
+    let balance = 0;
+
+    if (uid) {
+        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
+        const budgetSnap = await getDoc(doc(window.db, "budget", uid));
+        if (budgetSnap.exists()) {
+            balance = budgetSnap.data().balance;
+        }
+    } else {
+        // Расчет для локального режима без входа
         const inc = data.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
         const exp = data.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-        document.getElementById('currentBalance').innerText = (inc - exp) + ' ₽';
-        document.getElementById('totalIncome').innerText = inc + ' ₽';
-        document.getElementById('totalExpense').innerText = exp + ' ₽';
+        balance = inc - exp;
     }
 
+    document.getElementById('currentBalance').innerText = balance + ' ₽';
+    
+    // Оставляем расчет суммы доходов/расходов для карточек ниже
+    const incTotal = data.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+    const expTotal = data.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+    document.getElementById('totalIncome').innerText = incTotal + ' ₽';
+    document.getElementById('totalExpense').innerText = expTotal + ' ₽';
+}
     renderBudgets(budgets, transactions) {
         const container = document.getElementById('budgetsContainer');
         container.innerHTML = budgets.map(b => {
